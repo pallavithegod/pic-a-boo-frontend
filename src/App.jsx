@@ -12,6 +12,16 @@ import AlbumsView from './components/AlbumsView';
 import { fetchImages, uploadLocalFile, saveImageMetadata, deleteImage } from './services/api';
 import { compressImage, getImageDimensions, generateBlurPlaceholder } from './utils/imageUtils';
 
+// ── Custom Logo ───────────────────────────────────────────────────
+const LogoIcon = ({ className, style }) => (
+  <svg className={className} style={style} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+    <rect x="2" y="4" width="20" height="16" rx="4" stroke="currentColor" strokeWidth="2" />
+    <circle cx="12" cy="12" r="4" stroke="currentColor" strokeWidth="2" />
+    <circle cx="12" cy="12" r="2" fill="var(--accent)" />
+    <path d="M12 4V8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+  </svg>
+);
+
 // ── Tab definitions ───────────────────────────────────────────────
 const TABS = [
   { id: 'photos', label: 'Photos', Icon: ImageIcon },
@@ -200,13 +210,16 @@ export default function App() {
               {/* App title */}
               <div className="flex items-center gap-2.5">
                 <div
-                  className="w-8 h-8 rounded-lg flex items-center justify-center"
-                  style={{ background: 'var(--accent-soft)' }}
+                  className="w-9 h-9 rounded-xl flex items-center justify-center"
+                  style={{ background: 'var(--accent-soft)', border: '1px solid rgba(209, 50, 45, 0.2)' }}
                 >
-                  <ImageIcon className="w-4 h-4" style={{ color: 'var(--accent)' }} />
+                  <LogoIcon className="w-5 h-5" style={{ color: 'var(--text-primary)' }} />
                 </div>
-                <h1 className="text-[17px] font-bold tracking-tight">
-                  Pic-a-boo
+                <h1
+                  className="text-[20px] uppercase tracking-widest font-bold"
+                  style={{ fontFamily: 'var(--font-display)', color: 'var(--text-primary)', marginTop: '4px' }}
+                >
+                  PIC-A-BOO
                 </h1>
               </div>
 

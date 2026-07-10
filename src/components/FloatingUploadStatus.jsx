@@ -41,7 +41,7 @@ const FloatingUploadStatus = ({ queue, onClearCompleted }) => {
   return (
     <AnimatePresence>
       <motion.div
-        className="fixed bottom-6 right-6 z-40 overflow-hidden rounded-2xl liquid-glass no-select"
+        className={`fixed bottom-6 right-6 z-40 overflow-hidden rounded-2xl ${allDone ? 'liquid-glass' : 'liquid-glass-accent'} no-select`}
         style={{ width: 320, maxWidth: 'calc(100vw - 48px)' }}
         initial={{ opacity: 0, y: 20, scale: 0.95 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}

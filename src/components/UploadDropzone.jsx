@@ -45,26 +45,19 @@ const UploadDropzone = ({ onFilesDropped }) => {
     <AnimatePresence>
       {isDragging && (
         <motion.div
-          className="fixed inset-0 z-50 flex items-center justify-center"
+          className="fixed inset-0 z-50 flex items-center justify-center liquid-glass"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.2 }}
-          style={{
-            background: 'rgba(248, 248, 247, 0.85)',
-            backdropFilter: 'blur(12px)',
-          }}
         >
           <motion.div
-            className="flex flex-col items-center gap-5 p-10 rounded-2xl"
+            className="flex flex-col items-center gap-5 p-10 rounded-2xl liquid-glass-accent"
             initial={{ scale: 0.9, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.9, opacity: 0 }}
             transition={{ type: 'spring', stiffness: 400, damping: 30 }}
             style={{
-              border: '2px dashed var(--border-default)',
-              background: 'var(--surface-1)',
-              boxShadow: '0 8px 32px rgba(0,0,0,0.08)',
               minWidth: 280,
             }}
           >
