@@ -12,8 +12,12 @@ const AlbumCard = ({ title, subtitle, images, icon: Icon, accent }) => {
         background: 'var(--surface-1)',
         border: '1px solid var(--border-subtle)',
       }}
-      whileHover={{ scale: 1.01, boxShadow: '0 4px 16px rgba(0,0,0,0.06)' }}
-      whileTap={{ scale: 0.98 }}
+      whileHover={{ 
+        scale: 1.01, 
+        boxShadow: '0 4px 16px rgba(0, 0, 0, 0.15)',
+        borderColor: 'var(--accent-border)' 
+      }}
+      whileTap={{ scale: 0.98, backgroundColor: 'var(--accent-surface)' }}
       transition={{ type: 'spring', stiffness: 400, damping: 30 }}
     >
       {/* Cover mosaic */}
@@ -43,7 +47,7 @@ const AlbumCard = ({ title, subtitle, images, icon: Icon, accent }) => {
           </div>
         )}
         {/* Hover overlay */}
-        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/[0.04] transition-colors duration-200" />
+        <div className="absolute inset-0 bg-transparent group-hover:bg-[var(--accent-surface)] transition-colors duration-200" />
       </div>
 
       {/* Label */}
@@ -78,7 +82,6 @@ const AlbumsView = ({ images }) => {
           subtitle="0 photos"
           images={[]}
           icon={Star}
-          accent="rgba(245, 158, 11, 0.15)"
         />
         <AlbumCard
           title="All Photos"

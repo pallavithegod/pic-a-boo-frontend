@@ -75,7 +75,7 @@ const GalleryItem = memo(({ image, onClick, selected = false, onSelect, selectio
 
         {/* Hover darkening overlay */}
         <div
-          className="absolute inset-0 bg-black/0 group-hover:bg-black/[0.06] transition-colors duration-200 pointer-events-none"
+          className="absolute inset-0 bg-transparent group-hover:bg-[var(--accent-surface)] transition-colors duration-200 pointer-events-none"
         />
 
         {/* Selection overlay */}
@@ -84,7 +84,7 @@ const GalleryItem = memo(({ image, onClick, selected = false, onSelect, selectio
             className="absolute inset-0 pointer-events-none"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            style={{ background: 'rgba(52, 120, 246, 0.18)' }}
+            style={{ background: 'var(--accent-surface)', border: '2px solid var(--accent)' }}
           />
         )}
 

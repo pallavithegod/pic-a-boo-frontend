@@ -1,12 +1,11 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ImageIcon, FolderOpen, Search as SearchIcon, Plus, X, Trash2 } from 'lucide-react';
+import { Search as SearchIcon, Plus, X, Trash2, CheckCircle2 } from 'lucide-react';
 
 import GalleryGrid from './components/GalleryGrid';
 import LightboxModal from './components/LightboxModal';
 import UploadDropzone from './components/UploadDropzone';
 import FloatingUploadStatus from './components/FloatingUploadStatus';
-import SearchView from './components/SearchView';
 import AlbumsView from './components/AlbumsView';
 
 import { fetchImages, uploadLocalFile, saveImageMetadata, deleteImage } from './services/api';
@@ -15,26 +14,23 @@ import { compressImage, getImageDimensions, generateBlurPlaceholder } from './ut
 // ── Custom Logo ───────────────────────────────────────────────────
 const LogoIcon = ({ className, style }) => (
   <svg className={className} style={style} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-    <rect x="2" y="4" width="20" height="16" rx="4" stroke="currentColor" strokeWidth="2" />
-    <circle cx="12" cy="12" r="4" stroke="currentColor" strokeWidth="2" />
-    <circle cx="12" cy="12" r="2" fill="var(--accent)" />
-    <path d="M12 4V8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+    <rect x="2" y="6" width="20" height="14" rx="4" stroke="currentColor" strokeWidth="2" />
+    <path d="M7 6V4C7 3.44772 7.44772 3 8 3H16C16.5523 3 17 3.44772 17 4V6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" />
+    {/* Peek-a-boo Eye Lens */}
+    <path d="M8 13C8 13 10 10 12 10C14 10 16 13 16 13C16 13 14 16 12 16C10 16 8 13 8 13Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    <circle cx="12" cy="13" r="1.5" fill="currentColor" />
   </svg>
 );
 
-// ── Tab definitions ───────────────────────────────────────────────
-const TABS = [
-  { id: 'photos', label: 'Photos', Icon: ImageIcon },
-  { id: 'albums', label: 'Albums', Icon: FolderOpen },
-  { id: 'search', label: 'Search', Icon: SearchIcon },
-];
-
 export default function App() {
-  const [tab, setTab] = useState('photos');
+  const [tab, setTab] = useState('photos'); // 'photos' | 'albums'
+  const [searchQuery, setSearchQuery] = useState('');
+  
   const [images, setImages] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [uploadQueue, setUploadQueue] = useState([]);
   const [lightboxIndex, setLightboxIndex] = useState(null);
+  
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState([]);
 
@@ -48,16 +44,21 @@ export default function App() {
       .finally(() => setIsLoading(false));
   }, []);
 
-  // ── "/" shortcut → search tab ───────────────────────────────────
+  // ── Keyboard shortcuts ──────────────────────────────────────────
   useEffect(() => {
     const handler = (e) => {
       if (['INPUT', 'TEXTAREA'].includes(document.activeElement.tagName)) return;
-      if (e.key === '/') { e.preventDefault(); setTab('search'); }
       if (e.key === 'Escape' && selectionMode) clearSelection();
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
   }, [selectionMode]);
+
+  // ── Derived State: Filtered Images ──────────────────────────────
+  const filteredImages = useMemo(() => {
+    if (!searchQuery.trim()) return images;
+    return images.filter(img => img.filename.toLowerCase().includes(searchQuery.toLowerCase()));
+  }, [images, searchQuery]);
 
   // ── Upload pipeline ─────────────────────────────────────────────
   const handleFilesInput = useCallback((files) => {
@@ -68,21 +69,17 @@ export default function App() {
       setUploadQueue((q) => [{ id: itemId, filename, status: 'queued', progress: 0 }, ...q]);
 
       try {
-        // 1. Compress
         setUploadQueue((q) => q.map((i) => i.id === itemId ? { ...i, status: 'compressing', progress: 10 } : i));
         const compressed = await compressImage(file);
 
-        // 2. Dimensions + blur
         const dims = await getImageDimensions(compressed);
         const blur = await generateBlurPlaceholder(compressed);
 
-        // 3. Read as base64
         setUploadQueue((q) => q.map((i) => i.id === itemId ? { ...i, status: 'uploading', progress: 30 } : i));
         const publicUrl = await uploadLocalFile(compressed, (pct) => {
           setUploadQueue((q) => q.map((i) => i.id === itemId ? { ...i, progress: 30 + Math.round(pct * 0.6) } : i));
         });
 
-        // 4. Save metadata
         setUploadQueue((q) => q.map((i) => i.id === itemId ? { ...i, status: 'saving', progress: 95 } : i));
         const saved = await saveImageMetadata({
           id: itemId,
@@ -96,7 +93,6 @@ export default function App() {
           timestamp: new Date().toISOString(),
         });
 
-        // 5. Done
         setUploadQueue((q) => q.map((i) => i.id === itemId ? { ...i, status: 'complete', progress: 100 } : i));
         setImages((prev) => [saved, ...prev]);
       } catch (err) {
@@ -115,14 +111,14 @@ export default function App() {
       setImages((prev) => prev.filter((img) => img.id !== id));
       setLightboxIndex((idx) => {
         if (idx === null) return null;
-        const remaining = images.filter((img) => img.id !== id);
+        const remaining = filteredImages.filter((img) => img.id !== id);
         if (remaining.length === 0) return null;
         return Math.min(idx, remaining.length - 1);
       });
     } catch (err) {
       alert(`Delete failed: ${err.message}`);
     }
-  }, [images]);
+  }, [filteredImages]);
 
   // ── Selection ───────────────────────────────────────────────────
   const toggleSelect = useCallback((id) => {
@@ -146,202 +142,261 @@ export default function App() {
 
   // ── Lightbox ────────────────────────────────────────────────────
   const openLightbox = useCallback((id) => {
-    const idx = images.findIndex((img) => img.id === id);
+    const idx = filteredImages.findIndex((img) => img.id === id);
     if (idx !== -1) setLightboxIndex(idx);
-  }, [images]);
+  }, [filteredImages]);
 
   return (
     <div
-      className="flex flex-col h-screen overflow-hidden no-select"
+      className="h-screen w-full overflow-hidden relative no-select"
       style={{ background: 'var(--surface-0)', color: 'var(--text-primary)' }}
     >
-      {/* ── Header ─────────────────────────────────────────────────── */}
+      {/* ── Premium Unified Navbar (Sticky + Glassmorphism) ──────── */}
       <header
-        className="shrink-0 flex items-center justify-between px-4 md:px-6"
+        className="absolute top-0 left-0 right-0 z-40 transition-all duration-300"
         style={{
-          height: 56,
-          borderBottom: '1px solid var(--border-subtle)',
-          background: 'var(--surface-1)',
+          background: 'rgba(28, 28, 30, 0.75)', // Soft slate/charcoal
+          backdropFilter: 'blur(24px) saturate(1.5)',
+          WebkitBackdropFilter: 'blur(24px) saturate(1.5)',
+          borderBottom: '1px solid rgba(255, 255, 255, 0.05)',
+          boxShadow: '0 4px 24px -2px rgba(0,0,0,0.1)'
         }}
       >
-        <AnimatePresence mode="wait">
-          {selectionMode ? (
+        <div className="flex items-center justify-between px-4 md:px-6 h-16 w-full max-w-[1600px] mx-auto gap-4">
+          
+          {/* 1. Brand (Left) */}
+          <div className="flex items-center gap-3 w-1/4 min-w-max">
             <motion.div
-              key="selection-bar"
-              className="flex items-center justify-between w-full"
-              initial={{ opacity: 0, y: -8 }}
+              className="w-9 h-9 rounded-[10px] flex items-center justify-center"
+              style={{ 
+                background: 'linear-gradient(135deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.02) 100%)', 
+                border: '1px solid var(--border-subtle)',
+                boxShadow: 'inset 0 1px 0 rgba(255,255,255,0.1), 0 2px 4px rgba(0,0,0,0.1)'
+              }}
+              whileHover={{ scale: 1.05, backgroundColor: 'rgba(255,255,255,0.1)' }}
+              whileTap={{ scale: 0.95 }}
+            >
+              <LogoIcon className="w-4 h-4" style={{ color: 'var(--accent)' }} />
+            </motion.div>
+            <h1
+              className="text-[15px] uppercase tracking-[0.2em] font-bold hidden sm:block"
+              style={{ fontFamily: 'var(--font-display)', color: 'var(--text-primary)', marginTop: '2px' }}
+            >
+              PIC-A-BOO
+            </h1>
+          </div>
+
+          {/* 2. Segmented Navigation (Center) */}
+          <div className="flex items-center justify-center w-2/4">
+            <div 
+              className="flex items-center p-1 rounded-[14px]"
+              style={{ 
+                background: 'rgba(0,0,0,0.25)', 
+                border: '1px solid rgba(255,255,255,0.04)', 
+                boxShadow: 'inset 0 1px 3px rgba(0,0,0,0.2)' 
+              }}
+            >
+              {[
+                { id: 'photos', label: 'Photos' },
+                { id: 'albums', label: 'Albums' }
+              ].map((segment) => {
+                const active = tab === segment.id;
+                return (
+                  <motion.button
+                    key={segment.id}
+                    onClick={() => { setTab(segment.id); if (selectionMode) clearSelection(); }}
+                    className="relative px-5 py-1.5 rounded-[10px] text-[13px] font-semibold transition-colors z-10"
+                    style={{ color: active ? 'var(--accent)' : 'var(--text-tertiary)' }}
+                    whileHover={{ color: active ? 'var(--accent-hover)' : 'var(--text-secondary)' }}
+                    whileTap={{ scale: 0.96 }}
+                  >
+                    {active && (
+                      <motion.div
+                        layoutId="nav-segment"
+                        className="absolute inset-0 rounded-[10px] z-[-1]"
+                        style={{
+                          background: 'var(--accent-surface)',
+                          border: '1px solid var(--accent-border)'
+                        }}
+                        transition={{ type: 'spring', stiffness: 500, damping: 35 }}
+                      />
+                    )}
+                    <span className="relative z-10">{segment.label}</span>
+                  </motion.button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* 3. Actions (Right): Integrated Search & Premium CTA */}
+          <div className="flex items-center justify-end gap-3 w-1/4">
+            {/* Search */}
+            <div className="relative group hidden lg:block w-48 xl:w-56">
+              <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[var(--text-tertiary)] group-focus-within:text-[var(--accent)] transition-colors" />
+              <input 
+                type="text" 
+                placeholder="Search gallery..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full bg-[rgba(255,255,255,0.03)] hover:bg-[rgba(255,255,255,0.06)] focus:bg-[rgba(255,255,255,0.05)] border border-[rgba(255,255,255,0.04)] focus:border-[var(--accent)] rounded-full pl-9 pr-4 py-1.5 text-[13px] text-[var(--text-primary)] placeholder-[var(--text-tertiary)] transition-all outline-none shadow-sm focus:shadow-[0_0_0_1px_var(--accent-surface)]"
+              />
+              {searchQuery && (
+                <button 
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)] hover:text-[var(--text-primary)] transition-colors"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+            
+            {/* Upload Action */}
+            <input
+              type="file"
+              ref={fileInputRef}
+              multiple
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => {
+                if (e.target.files?.length) handleFilesInput(e.target.files);
+                e.target.value = '';
+              }}
+            />
+            <motion.button
+              onClick={() => fileInputRef.current?.click()}
+              className="flex items-center justify-center gap-1.5 px-4 py-1.5 rounded-full text-[13px] font-semibold transition-colors duration-200"
+              style={{
+                background: 'var(--text-primary)',
+                color: 'var(--surface-0)',
+                border: '1px solid transparent',
+              }}
+              whileHover={{ 
+                backgroundColor: 'var(--accent)', 
+                color: '#ffffff',
+                borderColor: 'var(--accent-border)'
+              }}
+              whileTap={{ scale: 0.96, backgroundColor: 'var(--accent-pressed)' }}
+            >
+              <Plus className="w-4 h-4" strokeWidth={2.5} />
+              <span className="hidden sm:inline tracking-wide">Upload</span>
+            </motion.button>
+          </div>
+        </div>
+        
+        {/* Selection Mode Overlay Bar */}
+        <AnimatePresence>
+          {selectionMode && (
+            <motion.div
+              className="absolute inset-0 z-50 flex items-center justify-between px-4 md:px-6 w-full h-full"
+              style={{
+                background: 'rgba(28, 28, 30, 0.95)',
+                backdropFilter: 'blur(32px)',
+                borderBottom: '1px solid rgba(255, 255, 255, 0.08)',
+              }}
+              initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -8 }}
-              transition={{ duration: 0.2 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ type: 'spring', stiffness: 500, damping: 30 }}
             >
               <motion.button
                 onClick={clearSelection}
-                className="p-2 rounded-lg transition-colors"
-                style={{ color: 'var(--text-secondary)' }}
-                whileHover={{ backgroundColor: 'var(--surface-2)' }}
-                whileTap={{ scale: 0.95 }}
+                className="p-2 rounded-full transition-colors bg-[rgba(255,255,255,0.06)] hover:bg-[rgba(255,255,255,0.1)]"
+                whileTap={{ scale: 0.9 }}
                 aria-label="Cancel selection"
               >
-                <X className="w-5 h-5" />
+                <X className="w-4 h-4 text-[var(--text-secondary)]" />
               </motion.button>
-              <span className="text-[14px] font-semibold">
-                {selectedIds.length} selected
-              </span>
+              
+              <div className="flex flex-col items-center">
+                <span className="text-[14px] font-semibold text-[var(--text-primary)]">
+                  {selectedIds.length} Selected
+                </span>
+                <span className="text-[11px] text-[var(--text-tertiary)]">Tap to unselect</span>
+              </div>
+              
               <motion.button
                 onClick={deleteSelected}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[13px] font-semibold transition-colors"
-                style={{ color: 'var(--danger)', background: 'rgba(239, 68, 68, 0.08)' }}
-                whileHover={{ backgroundColor: 'rgba(239, 68, 68, 0.14)' }}
+                className="flex items-center gap-1.5 px-4 py-1.5 rounded-full text-[13px] font-semibold transition-colors"
+                style={{ color: '#ffffff', background: 'var(--danger)' }}
+                whileHover={{ filter: 'brightness(1.1)', scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
               >
                 <Trash2 className="w-4 h-4" />
-                Delete
+                <span className="hidden sm:inline">Delete</span>
               </motion.button>
-            </motion.div>
-          ) : (
-            <motion.div
-              key="normal-bar"
-              className="flex items-center justify-between w-full"
-              initial={{ opacity: 0, y: 8 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 8 }}
-              transition={{ duration: 0.2 }}
-            >
-              {/* App title */}
-              <div className="flex items-center gap-2.5">
-                <div
-                  className="w-9 h-9 rounded-xl flex items-center justify-center"
-                  style={{ background: 'var(--accent-soft)', border: '1px solid rgba(209, 50, 45, 0.2)' }}
-                >
-                  <LogoIcon className="w-5 h-5" style={{ color: 'var(--text-primary)' }} />
-                </div>
-                <h1
-                  className="text-[20px] uppercase tracking-widest font-bold"
-                  style={{ fontFamily: 'var(--font-display)', color: 'var(--text-primary)', marginTop: '4px' }}
-                >
-                  PIC-A-BOO
-                </h1>
-              </div>
-
-              {/* Upload button */}
-              {tab === 'photos' && (
-                <>
-                  <input
-                    type="file"
-                    ref={fileInputRef}
-                    multiple
-                    accept="image/*"
-                    className="hidden"
-                    onChange={(e) => {
-                      if (e.target.files?.length) handleFilesInput(e.target.files);
-                      e.target.value = '';
-                    }}
-                  />
-                  <motion.button
-                    onClick={() => fileInputRef.current?.click()}
-                    className="flex items-center gap-1.5 pl-3 pr-4 py-2 rounded-xl text-[13px] font-semibold transition-colors"
-                    style={{
-                      background: 'var(--accent)',
-                      color: '#ffffff',
-                    }}
-                    whileHover={{ scale: 1.02, filter: 'brightness(1.08)' }}
-                    whileTap={{ scale: 0.96 }}
-                    title="Upload images"
-                  >
-                    <Plus className="w-4 h-4" strokeWidth={2.5} />
-                    Upload
-                  </motion.button>
-                </>
-              )}
             </motion.div>
           )}
         </AnimatePresence>
       </header>
 
-      {/* ── Tab navigation (integrated in header area) ────────────── */}
-      {!selectionMode && (
-        <nav
-          className="shrink-0 flex items-center gap-1 px-4 md:px-6 py-1"
-          style={{
-            borderBottom: '1px solid var(--border-subtle)',
-            background: 'var(--surface-1)',
-          }}
-        >
-          {TABS.map(({ id, label, Icon }) => {
-            const active = tab === id;
-            return (
-              <motion.button
-                key={id}
-                onClick={() => { setTab(id); if (selectionMode) clearSelection(); }}
-                className="relative flex items-center gap-1.5 px-3 py-2 rounded-lg text-[13px] font-medium transition-colors"
-                style={{
-                  color: active ? 'var(--accent)' : 'var(--text-secondary)',
-                  background: active ? 'var(--accent-soft)' : 'transparent',
-                }}
-                whileHover={{
-                  backgroundColor: active ? undefined : 'var(--surface-2)',
-                }}
-                whileTap={{ scale: 0.97 }}
+      {/* ── Main Content (Scrolls behind sticky header) ────────────── */}
+      <main className="h-full overflow-y-auto pt-20 px-0 sm:px-2 md:px-4 max-w-[1600px] mx-auto">
+        
+        {/* Mobile Search Input (Visible only if searching is needed on small screens) */}
+        <div className="px-4 mb-4 lg:hidden">
+          <div className="relative group w-full">
+            <SearchIcon className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-[var(--text-tertiary)]" />
+            <input 
+              type="text" 
+              placeholder="Search gallery..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full bg-[rgba(255,255,255,0.04)] border border-[rgba(255,255,255,0.06)] rounded-xl pl-10 pr-4 py-2.5 text-[14px] text-[var(--text-primary)] placeholder-[var(--text-tertiary)] outline-none focus:border-[rgba(255,255,255,0.15)] focus:bg-[rgba(255,255,255,0.06)] transition-all"
+            />
+            {searchQuery && (
+              <button 
+                onClick={() => setSearchQuery('')}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-[var(--text-tertiary)] hover:text-[var(--text-primary)] p-1"
               >
-                <Icon className="w-4 h-4" />
-                {label}
-              </motion.button>
-            );
-          })}
-        </nav>
-      )}
+                <X className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+        </div>
 
-      {/* ── Main content ───────────────────────────────────────────── */}
-      <main className="flex-1 overflow-y-auto" style={{ background: 'var(--surface-0)' }}>
         <AnimatePresence mode="wait">
           {tab === 'photos' && (
             <motion.div
               key="photos"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.2 }}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
             >
-              <GalleryGrid
-                images={images}
-                isLoading={isLoading}
-                onSelectImage={openLightbox}
-                selectionMode={selectionMode}
-                selectedIds={selectedIds}
-                onToggleSelect={toggleSelect}
-              />
+              {searchQuery && filteredImages.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-32 opacity-70">
+                  <SearchIcon className="w-10 h-10 text-[var(--text-tertiary)] mb-4" />
+                  <p className="text-[15px] text-[var(--text-secondary)]">No photos matching "{searchQuery}"</p>
+                </div>
+              ) : (
+                <GalleryGrid
+                  images={filteredImages}
+                  isLoading={isLoading}
+                  onSelectImage={openLightbox}
+                  selectionMode={selectionMode}
+                  selectedIds={selectedIds}
+                  onToggleSelect={toggleSelect}
+                />
+              )}
             </motion.div>
           )}
           {tab === 'albums' && (
             <motion.div
               key="albums"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.2 }}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.3, ease: [0.22, 1, 0.36, 1] }}
             >
-              <AlbumsView images={images} />
-            </motion.div>
-          )}
-          {tab === 'search' && (
-            <motion.div
-              key="search"
-              className="h-full"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.2 }}
-            >
-              <SearchView images={images} onSelectImage={openLightbox} />
+              <AlbumsView images={filteredImages} />
             </motion.div>
           )}
         </AnimatePresence>
       </main>
 
-      {/* ── Drag & Drop overlay ────────────────────────────────────── */}
+      {/* ── Overlays ─────────────────────────────────────────────────── */}
       <UploadDropzone onFilesDropped={handleFilesInput} />
 
-      {/* ── Upload status (liquid glass) ───────────────────────────── */}
       <FloatingUploadStatus
         queue={uploadQueue}
         onClearCompleted={() =>
@@ -349,15 +404,14 @@ export default function App() {
         }
       />
 
-      {/* ── Lightbox ───────────────────────────────────────────────── */}
       <AnimatePresence>
         {lightboxIndex !== null && (
           <LightboxModal
-            images={images}
+            images={filteredImages}
             currentIndex={lightboxIndex}
             onClose={() => setLightboxIndex(null)}
-            onPrev={() => setLightboxIndex((i) => (i === 0 ? images.length - 1 : i - 1))}
-            onNext={() => setLightboxIndex((i) => (i === images.length - 1 ? 0 : i + 1))}
+            onPrev={() => setLightboxIndex((i) => (i === 0 ? filteredImages.length - 1 : i - 1))}
+            onNext={() => setLightboxIndex((i) => (i === filteredImages.length - 1 ? 0 : i + 1))}
             onDelete={handleDelete}
           />
         )}

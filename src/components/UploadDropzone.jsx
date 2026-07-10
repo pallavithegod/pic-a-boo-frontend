@@ -52,13 +52,16 @@ const UploadDropzone = ({ onFilesDropped }) => {
           transition={{ duration: 0.2 }}
         >
           <motion.div
-            className="flex flex-col items-center gap-5 p-10 rounded-2xl liquid-glass-accent"
+            className="flex flex-col items-center gap-5 p-10 rounded-2xl"
             initial={{ scale: 0.9, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.9, opacity: 0 }}
             transition={{ type: 'spring', stiffness: 400, damping: 30 }}
             style={{
               minWidth: 280,
+              background: 'var(--surface-1)',
+              border: '1px solid var(--border-default)',
+              boxShadow: '0 8px 32px rgba(0,0,0,0.1)'
             }}
           >
             <motion.div

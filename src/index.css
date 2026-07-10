@@ -10,28 +10,29 @@
 :root {
   color-scheme: dark;
 
-  /* Nothing Phone deep gray palette */
-  --surface-0: #1c1c1e;      /* page background */
-  --surface-1: #29292e;      /* cards, header, panels */
-  --surface-2: #333338;      /* recessed inputs, hover */
-  --surface-3: #3a3a40;      /* skeleton shimmer mid */
+  /* Refined charcoal/slate palette */
+  --surface-0: #18181b;      /* page background (zinc-900) */
+  --surface-1: #27272a;      /* cards, header, panels (zinc-800) */
+  --surface-2: #3f3f46;      /* recessed inputs, hover (zinc-700) */
+  --surface-3: #52525b;      /* skeleton shimmer mid (zinc-600) */
 
-  /* Text hierarchy */
-  --text-primary: #f5f5f7;
-  --text-secondary: #a1a1a6;
-  --text-tertiary: #6e6e73;
-  --text-placeholder: #555558;
+  /* Text hierarchy (improved contrast) */
+  --text-primary: #fafafa;   /* zinc-50 */
+  --text-secondary: #a1a1aa; /* zinc-400 */
+  --text-tertiary: #71717a;  /* zinc-500 */
+  --text-placeholder: #52525b; /* zinc-600 */
 
-  /* Borders */
-  --border-subtle: #38383d;
-  --border-default: #48484a;
-  --border-strong: #636366;
+  /* Borders (subtle and neutral) */
+  --border-subtle: rgba(255, 255, 255, 0.08);
+  --border-default: rgba(255, 255, 255, 0.12);
+  --border-strong: rgba(255, 255, 255, 0.2);
 
-  /* Nothing red accent */
-  --accent: #d1322d;
-  --accent-bright: #ff3b30;
-  --accent-soft: rgba(209, 50, 45, 0.12);
-  --accent-hover: #e8342f;
+  /* B82F2B Accent Color System */
+  --accent: #B82F2B;
+  --accent-hover: #D13A35;
+  --accent-pressed: #9C2724;
+  --accent-surface: rgba(184, 47, 43, 0.08);
+  --accent-border: rgba(184, 47, 43, 0.25);
 
   --danger: #ff453a;
   --success: #30d158;
@@ -80,44 +81,25 @@ body {
 }
 
 /*
- * Liquid Glass — dark frosted glass for the Nothing deep gray palette.
- * Translucent dark surface with strong backdrop blur + saturate,
- * subtle inner highlight along the top edge, multi-layered shadow.
+ * Liquid Glass — dark frosted glass for the refined slate palette.
+ * Translucent dark surface with strong backdrop blur,
+ * subtle neutral borders and soft elevation.
  */
 .liquid-glass {
-  background: rgba(41, 41, 46, 0.65);
-  backdrop-filter: blur(32px) saturate(1.6);
-  -webkit-backdrop-filter: blur(32px) saturate(1.6);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  box-shadow:
-    0 2px 8px rgba(0, 0, 0, 0.25),
-    0 12px 40px rgba(0, 0, 0, 0.3),
-    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  background: rgba(39, 39, 42, 0.7);
+  backdrop-filter: blur(24px) saturate(1.2);
+  -webkit-backdrop-filter: blur(24px) saturate(1.2);
+  border: 1px solid var(--border-subtle);
+  box-shadow: 0 4px 24px -2px rgba(0, 0, 0, 0.2);
 }
 
-/* Liquid glass hover — brighter */
+/* Liquid glass hover */
 .liquid-glass-hover {
-  background: rgba(41, 41, 46, 0.78);
-  backdrop-filter: blur(40px) saturate(1.8);
-  -webkit-backdrop-filter: blur(40px) saturate(1.8);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  box-shadow:
-    0 2px 8px rgba(0, 0, 0, 0.2),
-    0 16px 48px rgba(0, 0, 0, 0.35),
-    inset 0 1px 0 rgba(255, 255, 255, 0.1);
-}
-
-/* Liquid glass — accent glow (for active upload) */
-.liquid-glass-accent {
-  background: rgba(41, 41, 46, 0.7);
-  backdrop-filter: blur(32px) saturate(1.6);
-  -webkit-backdrop-filter: blur(32px) saturate(1.6);
-  border: 1px solid rgba(209, 50, 45, 0.2);
-  box-shadow:
-    0 2px 8px rgba(0, 0, 0, 0.25),
-    0 12px 40px rgba(0, 0, 0, 0.3),
-    0 0 24px rgba(209, 50, 45, 0.06),
-    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  background: rgba(63, 63, 70, 0.6);
+  backdrop-filter: blur(24px) saturate(1.2);
+  -webkit-backdrop-filter: blur(24px) saturate(1.2);
+  border: 1px solid var(--border-default);
+  box-shadow: 0 8px 32px -4px rgba(0, 0, 0, 0.25);
 }
 
 /* Staggered fade-in */
@@ -161,15 +143,6 @@ body {
 }
 .progress-pulse {
   animation: progressPulse 2s ease-in-out infinite;
-}
-
-/* Glow ring for active uploads */
-@keyframes glowPulse {
-  0%, 100% { box-shadow: 0 0 8px rgba(209, 50, 45, 0.15), 0 0 24px rgba(209, 50, 45, 0.05); }
-  50% { box-shadow: 0 0 16px rgba(209, 50, 45, 0.3), 0 0 40px rgba(209, 50, 45, 0.1); }
-}
-.glow-pulse {
-  animation: glowPulse 2.5s ease-in-out infinite;
 }
 
 .pb-safe { padding-bottom: env(safe-area-inset-bottom, 0px); }
