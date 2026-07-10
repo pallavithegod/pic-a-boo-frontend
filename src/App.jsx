@@ -8,7 +8,7 @@ import UploadDropzone from './components/UploadDropzone';
 import FloatingUploadStatus from './components/FloatingUploadStatus';
 import AlbumsView from './components/AlbumsView';
 
-import { fetchImages, uploadLocalFile, saveImageMetadata, deleteImage } from './services/api';
+import { fetchImages, uploadToS3, saveImageMetadata, deleteImage } from './services/api';
 import { compressImage, getImageDimensions, generateBlurPlaceholder } from './utils/imageUtils';
 
 // ── Custom Logo ───────────────────────────────────────────────────
@@ -76,15 +76,15 @@ export default function App() {
         const blur = await generateBlurPlaceholder(compressed);
 
         setUploadQueue((q) => q.map((i) => i.id === itemId ? { ...i, status: 'uploading', progress: 30 } : i));
-        const publicUrl = await uploadLocalFile(compressed, (pct) => {
+        const { key, publicUrl } = await uploadToS3(compressed, filename, compressed.type || 'image/jpeg', (pct) => {
           setUploadQueue((q) => q.map((i) => i.id === itemId ? { ...i, progress: 30 + Math.round(pct * 0.6) } : i));
         });
 
         setUploadQueue((q) => q.map((i) => i.id === itemId ? { ...i, status: 'saving', progress: 95 } : i));
         const saved = await saveImageMetadata({
           id: itemId,
-          key: '',
-          publicUrl,
+          key: key,
+          publicUrl: publicUrl,
           filename,
           width: dims.width,
           height: dims.height,

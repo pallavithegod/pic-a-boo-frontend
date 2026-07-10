@@ -10,24 +10,55 @@ export const fetchImages = async () => {
   return response.json();
 };
 
-// Read a File object as a base64 data URL (replaces S3 upload)
-export const readFileAsDataURL = (file) => {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result);
-    reader.onerror = () => reject(new Error('Failed to read file'));
-    reader.readAsDataURL(file);
+// Request a presigned URL from the backend
+const getPresignedUrl = async (filename, contentType) => {
+  const response = await fetch(`${API_BASE_URL}/upload/presign`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ filename, contentType }),
   });
+  if (!response.ok) {
+    const err = await response.json().catch(() => ({}));
+    throw new Error(err.error || 'Failed to get presigned URL');
+  }
+  return response.json();
 };
 
-// Upload local file: compress → read as base64 → return data URL
-// onProgress is called with 0..100 to simulate progress
-export const uploadLocalFile = async (blob, onProgress) => {
-  // Simulate staged progress: reading is nearly instant but we animate it
-  onProgress?.(20);
-  const dataUrl = await readFileAsDataURL(blob);
-  onProgress?.(90);
-  return dataUrl;
+// Upload file directly to S3 using XHR for accurate progress tracking
+export const uploadToS3 = (file, filename, contentType, onProgress) => {
+  return new Promise(async (resolve, reject) => {
+    try {
+      // 1. Get presigned URL
+      const { presignedUrl, key, publicUrl } = await getPresignedUrl(filename, contentType);
+
+      // 2. Upload directly to S3
+      const xhr = new XMLHttpRequest();
+      xhr.open('PUT', presignedUrl, true);
+      xhr.setRequestHeader('Content-Type', contentType);
+
+      if (xhr.upload) {
+        xhr.upload.onprogress = (event) => {
+          if (event.lengthComputable) {
+            const percentComplete = Math.round((event.loaded / event.total) * 100);
+            onProgress?.(percentComplete);
+          }
+        };
+      }
+
+      xhr.onload = () => {
+        if (xhr.status >= 200 && xhr.status < 300) {
+          resolve({ key, publicUrl });
+        } else {
+          reject(new Error(`S3 Upload failed with status ${xhr.status}`));
+        }
+      };
+
+      xhr.onerror = () => reject(new Error('S3 Upload network error'));
+      xhr.send(file);
+    } catch (error) {
+      reject(error);
+    }
+  });
 };
 
 // Save image metadata in DB (publicUrl is a base64 data URL in local mode)
